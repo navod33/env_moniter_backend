@@ -49,10 +49,6 @@ async function initializeConfig() {
  * @param {Object} data - Sensor data { temperature, humidity, ... }
  */
 async function sendSmsIfExceed(data) {
-  if (!thresholdTemp || !thresholdHumidity || !toNumber) {
-    console.warn('[SMS] Configuration is incomplete. Cannot send alert.');
-    return;
-  }
 
   if (data.temperature >= thresholdTemp || data.humidity >= thresholdHumidity) {
     console.log('[SMS] Sending alert message...');

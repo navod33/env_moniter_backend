@@ -2,6 +2,8 @@
 const mqtt = require('mqtt');
 const { SensorReading } = require('../models'); 
 const { sendSmsIfExceed } = require('./sms.service');
+const {  Threshold } = require('../models')
+
 
 // Example HiveMQ Cloud config
 // Example HiveMQ Cloud config
@@ -19,6 +21,8 @@ const options = {
   // rejectUnauthorized: false, // if using self-signed cert
 };
 
+
+
 let latestData = null;
 
 // Connect client
@@ -35,28 +39,67 @@ client.on('connect', () => {
   });
 });
 
+// client.on('message', async (topic, message) => {
+//   if (topic === TOPIC_DATA) {
+//     try {
+//       const payload = JSON.parse(message.toString());
+//       // payload => { temperature: 28, humidity: 60, status?: "NORMAL" or "EXCEED" }
+
+//       // Insert into DB
+//       const reading = await SensorReading.create({
+//         temperature: payload.temperature,
+//         humidity: payload.humidity,
+//         status: payload.status || 'NORMAL'
+//       });
+
+//       latestData = reading.get({ plain: true });
+
+//       // Check thresholds => Possibly send SMS
+//       await sendSmsIfExceed(latestData);
+//     } catch (err) {
+//       console.error('[MQTT] Error processing message:', err.message);
+//     }
+//   }
+// });
+
+
 client.on('message', async (topic, message) => {
   if (topic === TOPIC_DATA) {
     try {
       const payload = JSON.parse(message.toString());
-      // payload => { temperature: 28, humidity: 60, status?: "NORMAL" or "EXCEED" }
 
-      // Insert into DB
+      // Fetch threshold values from the database
+      const thresholdRecord = await Threshold.findOne();
+      const thresholdTemp = thresholdRecord.temperature || 0;
+      const thresholdHumidity = thresholdRecord.humidity || 0;
+
+      console.log("thresholdRecord", thresholdRecord)
+
+      // Determine status based on thresholds
+      const status = (payload.temperature > thresholdTemp || payload.humidity > thresholdHumidity)
+        ? 'EXCEED'
+        : 'NORMAL';
+
+      // Insert into DB with determined status
       const reading = await SensorReading.create({
         temperature: payload.temperature,
         humidity: payload.humidity,
-        status: payload.status || 'NORMAL'
+        status
       });
 
       latestData = reading.get({ plain: true });
 
-      // Check thresholds => Possibly send SMS
-      await sendSmsIfExceed(latestData);
+      // Check thresholds and possibly send SMS
+      if (status === 'EXCEED') {
+        await sendSmsIfExceed(latestData);
+      }
     } catch (err) {
       console.error('[MQTT] Error processing message:', err.message);
     }
   }
 });
+
+
 
 // Publish to commands topic
 function publishCommand(commandObj) {
