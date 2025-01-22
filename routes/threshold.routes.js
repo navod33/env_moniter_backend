@@ -6,9 +6,7 @@ const {  Threshold } = require('../models')
 // Route to fetch the latest threshold
 router.get('/', async (req, res) => {
   try {
-    const threshold = await Threshold.findOne({
-      order: [['updatedAt', 'DESC']], // Get the latest entry
-    });
+    const threshold = await Threshold.findOne();
 
     if (!threshold) {
       return res.status(404).json({ message: 'No threshold data found.' });
