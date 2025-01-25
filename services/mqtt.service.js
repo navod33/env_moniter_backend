@@ -1,15 +1,14 @@
 // services/mqtt.service.js
 const mqtt = require('mqtt');
-const { SensorReading } = require('../models');
+const { SensorReading, Threshold } = require('../models');
 const { sendSmsIfExceed } = require('./sms.service');
-const { Threshold } = require('../models');
 
 // HiveMQ Cloud configuration
 const MQTT_BROKER_URL = 'mqtts://c76bd7703a15440e9ddaf8bdcc451fa6.s1.eu.hivemq.cloud';
 const MQTT_USERNAME = 'hivemq.webclient.1737018172270';
 const MQTT_PASSWORD = 'S2kCHb0dlaFjZY47,*.!';
-
 const TOPIC_DATA = 'dht11/data';
+
 const TOPIC_COMMANDS = 'backend/commands';
 
 const options = {
@@ -18,7 +17,7 @@ const options = {
 };
 
 let latestData = null;
-let lastSavedTimestamp = 0; 
+let lastSavedTimestamp = 0;
 
 // Connect client
 const client = mqtt.connect(MQTT_BROKER_URL, options);
@@ -57,7 +56,6 @@ client.on('message', async (topic, message) => {
       let status = 'NORMAL';
       const tempExceed = payload.temperature > thresholdTemp;
       const humExceed = payload.humidity > thresholdHumidity;
-      
 
       if (tempExceed && humExceed) {
         status = 'BOTH_EXCEED';
@@ -83,8 +81,6 @@ client.on('message', async (topic, message) => {
           latestData = payload;
           lastSavedTimestamp = currentTimestamp;
 
-          // console.log('[MQTT] Data saved to SensorReading:', latestData);
-
           // If thresholds are exceeded, send an SMS
           if (status !== 'NORMAL') {
             await sendSmsIfExceed(latestData);
@@ -102,7 +98,6 @@ client.on('message', async (topic, message) => {
   }
 });
 
-
 // Publish commands to the MQTT broker
 function publishCommand(commandObj) {
   client.publish(TOPIC_COMMANDS, JSON.stringify(commandObj), (err) => {
@@ -111,8 +106,40 @@ function publishCommand(commandObj) {
   });
 }
 
+// Publish threshold data to the MQTT broker
+// Publish threshold data to the MQTT broker
+async function publishThresholds() {
+  try {
+    const thresholdRecord = await Threshold.findOne();
+    if (!thresholdRecord) {
+      console.warn('[MQTT] No threshold record found in the database.');
+      return;
+    }
+
+    const thresholdData = {
+      tempThreshold: thresholdRecord.temperature || 0,
+      humThreshold: thresholdRecord.humidity || 0,
+    };
+
+    // Convert the object to a JSON string before publishing
+    client.publish(TOPIC_COMMANDS, JSON.stringify(thresholdData), (err) => {
+      if (err) console.error('[MQTT] Publish error:', err);
+      else console.log('[MQTT] Thresholds published:', thresholdData);
+    });
+  } catch (error) {
+    console.error('[MQTT] Error fetching and publishing thresholds:', error.message, error.stack);
+  }
+}
+
+// Call the publishThresholds function on application start
+client.on('connect', () => {
+  publishThresholds();
+});
+
+
 module.exports = {
   client,
   publishCommand,
+  publishThresholds,
   getLatestData: () => latestData,
 };
