@@ -54,15 +54,24 @@ client.on('message', async (topic, message) => {
       const thresholdHumidity = thresholdRecord.humidity || 0;
 
       // Determine the status based on thresholds
-      const status = (payload.temperature > thresholdTemp || payload.humidity > thresholdHumidity)
-        ? 'EXCEED'
-        : 'NORMAL';
+      let status = 'NORMAL';
+      const tempExceed = payload.temperature > thresholdTemp;
+      const humExceed = payload.humidity > thresholdHumidity;
+      
+
+      if (tempExceed && humExceed) {
+        status = 'BOTH_EXCEED';
+      } else if (tempExceed) {
+        status = 'TEM_EXCEED';
+      } else if (humExceed) {
+        status = 'HUM_EXCEED';
+      }
 
       console.log(`[MQTT] Processed Data: Temp: ${payload.temperature}, Humidity: ${payload.humidity}, Status: ${status}`);
 
-      // Check the time interval
+      // Check the time interval (1 minute)
       const currentTimestamp = Date.now();
-      if (currentTimestamp - lastSavedTimestamp >= 30 * 60 * 1000) {
+      if (currentTimestamp - lastSavedTimestamp >= 1 * 60 * 1000) {
         try {
           // Save the data to the database
           const reading = await SensorReading.create({
@@ -74,10 +83,10 @@ client.on('message', async (topic, message) => {
           latestData = reading.get({ plain: true });
           lastSavedTimestamp = currentTimestamp;
 
-          console.log('[MQTT] Data saved to SensorReading:', latestData);
+          // console.log('[MQTT] Data saved to SensorReading:', latestData);
 
           // If thresholds are exceeded, send an SMS
-          if (status === 'EXCEED') {
+          if (status !== 'NORMAL') {
             await sendSmsIfExceed(latestData);
             console.log('[MQTT] SMS sent for exceeding threshold.');
           }
@@ -85,13 +94,14 @@ client.on('message', async (topic, message) => {
           console.error('[MQTT] Error saving data to SensorReading:', dbError.message, dbError.stack);
         }
       } else {
-        console.log('[MQTT] Data received but not saved (within 2-minute interval).');
+        console.log('[MQTT] Data received but not saved (within 1-minute interval).');
       }
     } catch (parseError) {
       console.error('[MQTT] Error parsing message:', parseError.message, parseError.stack);
     }
   }
 });
+
 
 // Publish commands to the MQTT broker
 function publishCommand(commandObj) {
