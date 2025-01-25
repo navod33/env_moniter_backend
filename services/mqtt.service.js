@@ -80,7 +80,7 @@ client.on('message', async (topic, message) => {
             status,
           });
 
-          latestData = reading.get({ plain: true });
+          latestData = payload;
           lastSavedTimestamp = currentTimestamp;
 
           // console.log('[MQTT] Data saved to SensorReading:', latestData);
