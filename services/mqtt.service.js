@@ -108,7 +108,7 @@ function publishCommand(commandObj) {
 
 // Publish threshold data to the MQTT broker
 // Publish threshold data to the MQTT broker
-async function publishThresholds() {
+ async function publishThresholds() {
   try {
     const thresholdRecord = await Threshold.findOne();
     if (!thresholdRecord) {

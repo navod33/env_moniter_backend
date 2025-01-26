@@ -1,7 +1,9 @@
+const { publishThresholds } = require('../services/mqtt.service.js');
 const express = require('express');
 const router = express.Router();
 const db = require('../models');
 const {  Threshold } = require('../models')
+
 
 // Route to fetch the latest threshold
 router.get('/', async (req, res) => {
@@ -44,7 +46,8 @@ router.post('/create', async (req, res) => {
   
       // If no record exists, create a new one
       threshold = await Threshold.create({ temperature, humidity });
-  
+      publishThresholds()
+
       res.status(201).json({
         message: 'Threshold created successfully.',
         data: threshold,
