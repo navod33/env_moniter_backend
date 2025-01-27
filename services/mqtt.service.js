@@ -67,25 +67,28 @@ client.on('message', async (topic, message) => {
 
       console.log(`[MQTT] Processed Data: Temp: ${payload.temperature}, Humidity: ${payload.humidity}, Status: ${status}`);
 
+      latestData = payload;
+
+        // If thresholds are exceeded, send an SMS
+        if (status !== 'NORMAL') {
+          await sendSmsIfExceed(latestData);
+          console.log('[MQTT] SMS sent for exceeding threshold.');
+        }
+
       // Check the time interval (1 minute)
       const currentTimestamp = Date.now();
       if (currentTimestamp - lastSavedTimestamp >= 1 * 60 * 1000) {
         try {
           // Save the data to the database
-          const reading = await SensorReading.create({
+            await SensorReading.create({
             temperature: payload.temperature,
             humidity: payload.humidity,
             status,
           });
 
-          latestData = payload;
           lastSavedTimestamp = currentTimestamp;
 
-          // If thresholds are exceeded, send an SMS
-          if (status !== 'NORMAL') {
-            await sendSmsIfExceed(latestData);
-            console.log('[MQTT] SMS sent for exceeding threshold.');
-          }
+     
         } catch (dbError) {
           console.error('[MQTT] Error saving data to SensorReading:', dbError.message, dbError.stack);
         }
@@ -107,7 +110,6 @@ function publishCommand(commandObj) {
 }
 
 // Publish threshold data to the MQTT broker
-// Publish threshold data to the MQTT broker
  async function publishThresholds() {
   try {
     const thresholdRecord = await Threshold.findOne();
@@ -115,6 +117,8 @@ function publishCommand(commandObj) {
       console.warn('[MQTT] No threshold record found in the database.');
       return;
     }
+
+    console.error('[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
 
     const thresholdData = {
       tempThreshold: thresholdRecord.temperature || 0,
