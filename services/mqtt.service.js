@@ -118,8 +118,6 @@ function publishCommand(commandObj) {
       return;
     }
 
-    console.error('[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
-
     const thresholdData = {
       tempThreshold: thresholdRecord.temperature || 0,
       humThreshold: thresholdRecord.humidity || 0,

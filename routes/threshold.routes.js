@@ -24,29 +24,33 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Route to update the threshold
-router.post('/create', async (req, res) => {
+  router.post('/create', async (req, res) => {
     const { temperature, humidity } = req.body;
-  
+
     try {
       // Check if a record already exists
       let threshold = await Threshold.findOne();
-  
+
       if (threshold) {
         // Update the existing record
         threshold.temperature = temperature;
         threshold.humidity = humidity;
         await threshold.save();
-  
+
+        console.log('[Threshold Route] Updating threshold and calling publishThresholds...');
+        await publishThresholds();
+
         return res.status(200).json({
           message: 'Threshold updated successfully.',
           data: threshold,
         });
       }
-  
+
       // If no record exists, create a new one
       threshold = await Threshold.create({ temperature, humidity });
-      publishThresholds()
+
+      console.log('[Threshold Route] Creating new threshold and calling publishThresholds...');
+      await publishThresholds();
 
       res.status(201).json({
         message: 'Threshold created successfully.',
@@ -57,6 +61,7 @@ router.post('/create', async (req, res) => {
       res.status(500).json({ message: 'Error creating or updating threshold data.' });
     }
   });
+
   
 
 module.exports = router;
